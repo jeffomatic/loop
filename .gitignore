@@ -1,0 +1,4 @@
+build
+
+# Ignore any configure/build artifacts from vendored deps
+vendor/portaudio
