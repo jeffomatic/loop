@@ -13,8 +13,8 @@ PA_DIR = $(VENDORDIR)/portaudio
 PA_LIB = $(PA_DIR)/lib/.libs/libportaudio.a
 PA_FRAMEWORKS = CoreAudio AudioToolbox AudioUnit CoreServices Carbon
 
-LIB_DEPS = $(SDL_LIB_DEPS)
-FRAMEWORKS = $(PA_FRAMEWORKS) $(SDL_FRAMEWORKS)
+LIB_DEPS = $(sort $(SDL_LIB_DEPS))
+FRAMEWORKS = $(sort $(PA_FRAMEWORKS) $(SDL_FRAMEWORKS))
 
 LIB_DEP_FLAGS = $(patsubst %,-l%,$(LIB_DEPS))
 FRAMEWORK_FLAGS = $(patsubst %,-framework %,$(FRAMEWORKS))
