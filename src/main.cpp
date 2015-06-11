@@ -1,11 +1,12 @@
+#include <math.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "../vendor/portaudio/include/portaudio.h"
 #include "../vendor/sdl/include/SDL.h"
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+#define UNUSED(x) (void)(x)
 
 void dieOnPaErr(PaError err, const char* context) {
 	if (err == paNoError) return;
@@ -14,7 +15,65 @@ void dieOnPaErr(PaError err, const char* context) {
 	exit(1);
 }
 
+struct paTestData {
+	float left_phase;
+	float right_phase;
+};
+
+bool gQuit = false;
+void signalHandler(int signum) {
+	switch (signum) {
+	case SIGINT:
+	case SIGQUIT:
+	case SIGTERM:
+		gQuit = true;
+		break;
+	}
+}
+
+void initSignalHandler() {
+	// Signals range from [1, 31]
+	for (int i = 1; i <= 31; i++) {
+		signal(i, signalHandler);
+	}
+}
+
+int patestCallback(
+	const void *inputBuffer,
+	void *outputBuffer,
+	unsigned long framesPerBuffer,
+	const PaStreamCallbackTimeInfo* timeInfo,
+	PaStreamCallbackFlags statusFlags,
+	void *userData
+) {
+	UNUSED(inputBuffer);
+
+    /* Cast data passed through stream to our structure. */
+    paTestData *data = (paTestData*)userData;
+    float *out = (float*)outputBuffer;
+
+    for (int i = 0; i < framesPerBuffer; i++) {
+        *out++ = data->left_phase;
+        *out++ = data->right_phase;
+
+        /* Generate simple sawtooth phaser that ranges between -1.0 and 1.0. */
+        data->left_phase += 0.01f;
+        /* When signal reaches top, drop back down. */
+        if( data->left_phase >= 1.0f ) data->left_phase -= 2.0f;
+
+        /* higher pitch so we can distinguish left and right. */
+        data->right_phase += 0.03f;
+        if( data->right_phase >= 1.0f ) data->right_phase -= 2.0f;
+    }
+
+    return 0;
+}
+
 int main(int argc, char* args[]) {
+	initSignalHandler();
+
+	printf("Sizeof int is %d\n", sizeof(int));
+
 	PaError paErr = Pa_Initialize();
 	dieOnPaErr(paErr, "Pa_Initialize");
 
@@ -39,24 +98,24 @@ int main(int argc, char* args[]) {
 	    printf("Default sample rate: %f\n", deviceInfo->defaultSampleRate);
 	}
 
-	paErr = Pa_Terminate();
-	dieOnPaErr(paErr, "Pa_Terminate");
+	paTestData data;
+	PaStream* stream;
 
-    if (SDL_Init( SDL_INIT_VIDEO ) < 0) {
-        printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
-    } else {
-        SDL_Window* window = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-        if (window == NULL) {
-            printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
-        } else {
-            SDL_Surface* screenSurface = SDL_GetWindowSurface( window );
-		    SDL_FillRect( screenSurface, NULL, SDL_MapRGB( screenSurface->format, 0xFF, 0xFF, 0xFF ) );
-            SDL_UpdateWindowSurface( window );
-            SDL_Delay(2000);
-        }
+    paErr = Pa_OpenDefaultStream(
+    	&stream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
+        patestCallback, &data
+	);
+    dieOnPaErr(paErr, "Pa_OpenDefaultStream");
+
+    paErr = Pa_StartStream(stream);
+    dieOnPaErr(paErr, "Pa_StartStream");
+
+    for (;;) {
+    	if (gQuit) break;
     }
 
-    SDL_Quit();
+	paErr = Pa_Terminate();
+	dieOnPaErr(paErr, "Pa_Terminate");
 
 	return 0;
 }

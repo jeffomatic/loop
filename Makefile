@@ -31,7 +31,7 @@ $(BUILDDIR)/$(EXECUTABLE) : $(OBJECTS) $(VENDORDEPS)
 	$(CC) $(OBJECTS) $(PA_LIB) $(SDL_LIB) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
 
 $(OBJECTS): $(SOURCES)
-	$(CC) -g -c $< -o $@
+	$(CC) -Wall -g -c $< -o $@
 
 $(PA_LIB):
 	cd $(PA_DIR); ./configure && make
