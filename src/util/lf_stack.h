@@ -3,11 +3,7 @@
 #include "../../vendor/sdl/include/SDL.h"
 
 struct LfNode {
-	LfNode* next;
-
-	LfNode() {
-		next = nullptr;
-	}
+	LfNode* next = nullptr;
 
 	int length() const {
 		const LfNode* cur = this;
@@ -41,11 +37,7 @@ struct LfNode {
 };
 
 struct LfStack {
-	LfNode* head;
-
-	LfStack() {
-		head = nullptr;
-	}
+	LfNode* head = nullptr;
 
 	bool push(LfNode* n) {
 		LfNode* prevHead;
