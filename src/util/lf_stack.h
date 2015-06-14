@@ -15,6 +15,12 @@ struct LfNode {
 		return len;
 	}
 
+	LfNode* tail() {
+		LfNode* cur = this;
+		while (cur->next) cur = cur->next;
+		return cur;
+	}
+
 	LfNode* reverse() {
 		LfNode* todo = this;
 		LfNode* done = nullptr;

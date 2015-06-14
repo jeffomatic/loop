@@ -1,18 +1,12 @@
 #include <stdio.h>
 
-#include "util/lf_stack_test.h"
+extern void testLfStack();
 
-#define DO_TEST(x) { \
-	int res = x(); \
-	if (res) { \
-		printf("%s: failed, res: %d\n", #x, res); \
-	} else { \
-		printf("%s: passed\n", #x); \
-	} \
-}
+#define RUN_TEST(x) printf("Running test: %s\n", #x); x()
 
 int main(int argc, char* args[]) {
-	DO_TEST(testLfNode)
-	DO_TEST(testLfStack)
+	RUN_TEST(testLfStack);
+
+	printf("Tests complete.\n");
 	return 0;
 }
