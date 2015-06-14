@@ -83,10 +83,10 @@ int patestCallback(
 	void *userData
 ) {
 	UNUSED(inputBuffer);
-    stereoStream* mixerOutStream = (stereoStream*)userData;
-    stereoFrame* out = (stereoFrame*)outputBuffer;
-    mixerOutStream->read(out, framesPerBuffer);
-    return 0;
+	stereoStream* mixerOutStream = (stereoStream*)userData;
+	stereoFrame* out = (stereoFrame*)outputBuffer;
+	mixerOutStream->read(out, framesPerBuffer);
+	return 0;
 }
 
 void paDumpInfo() {
@@ -96,19 +96,19 @@ void paDumpInfo() {
 	printf("Audio devices: %d\n", nDevices);
 
 	for (int i = 0; i < nDevices; i++) {
-	    const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
+		const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
 
-	    printf("\n");
-	    printf("Device %d: %s\n", i, deviceInfo->name);
-	    printf("Max channels:\n");
-	    printf("- input:\t%d\n", deviceInfo->maxInputChannels);
-	    printf("- output:\t%d\n", deviceInfo->maxOutputChannels);
-	    printf("Default latency:\n");
-	    printf("- low input:\t%f\n", deviceInfo->defaultLowInputLatency);
-	    printf("- low output:\t%f\n", deviceInfo->defaultLowOutputLatency);
-	    printf("- high input:\t%f\n", deviceInfo->defaultHighInputLatency);
-	    printf("- high output:\t%f\n", deviceInfo->defaultHighOutputLatency);
-	    printf("Default sample rate: %f\n", deviceInfo->defaultSampleRate);
+		printf("\n");
+		printf("Device %d: %s\n", i, deviceInfo->name);
+		printf("Max channels:\n");
+		printf("- input:\t%d\n", deviceInfo->maxInputChannels);
+		printf("- output:\t%d\n", deviceInfo->maxOutputChannels);
+		printf("Default latency:\n");
+		printf("- low input:\t%f\n", deviceInfo->defaultLowInputLatency);
+		printf("- low output:\t%f\n", deviceInfo->defaultLowOutputLatency);
+		printf("- high input:\t%f\n", deviceInfo->defaultHighInputLatency);
+		printf("- high output:\t%f\n", deviceInfo->defaultHighOutputLatency);
+		printf("Default sample rate: %f\n", deviceInfo->defaultSampleRate);
 	}
 }
 
@@ -120,20 +120,20 @@ int appMain(int argc, char* args[]) {
 
 	stereoStream mixerOutStream;
 	PaStream* paStream;
-    paErr = Pa_OpenDefaultStream(
-    	&paStream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
-        patestCallback, &mixerOutStream
+	paErr = Pa_OpenDefaultStream(
+		&paStream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
+		patestCallback, &mixerOutStream
 	);
-    dieOnPaErr(paErr, "Pa_OpenDefaultStream");
+	dieOnPaErr(paErr, "Pa_OpenDefaultStream");
 
-    paErr = Pa_StartStream(paStream);
-    dieOnPaErr(paErr, "Pa_StartStream");
+	paErr = Pa_StartStream(paStream);
+	dieOnPaErr(paErr, "Pa_StartStream");
 
-    SDL_Thread* mixerThread = SDL_CreateThread(mixerThreadFunc, "mixer", &mixerOutStream);
+	SDL_Thread* mixerThread = SDL_CreateThread(mixerThreadFunc, "mixer", &mixerOutStream);
 	if (mixerThread == nullptr) {
 		dieOnSDLError("SDL_CreateThread(mixerThreadFunc, \"mixer\", &mixerOutStream)");
 	}
-    SDL_WaitThread(mixerThread, nullptr);
+	SDL_WaitThread(mixerThread, nullptr);
 
 	paErr = Pa_Terminate();
 	dieOnPaErr(paErr, "Pa_Terminate");

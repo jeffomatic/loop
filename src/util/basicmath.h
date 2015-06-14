@@ -21,12 +21,12 @@ inline bool wrapLess(uint64_t a, uint64_t b) {
 
 template<typename T>
 const T& min(const T& a, const T& b) {
-  return (b < a) ? b : a;
+ 	return (b < a) ? b : a;
 }
 
 template<typename T>
 const T& max(const T& a, const T& b) {
-  return (b < a) ? a : b;
+	return (b < a) ? a : b;
 }
 
 template<typename T, size_t N>

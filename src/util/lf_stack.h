@@ -24,14 +24,12 @@ struct LfNode {
 	LfNode* reverse() {
 		LfNode* todo = this;
 		LfNode* done = nullptr;
-
 		while (todo) {
 			LfNode* n = todo;
 			todo = todo->next;
 			n->next = done;
 			done = n;
 		}
-
 		return done;
 	}
 };
