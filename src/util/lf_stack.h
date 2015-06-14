@@ -5,6 +5,10 @@
 struct LfNode {
 	LfNode* next;
 
+	LfNode() {
+		next = nullptr;
+	}
+
 	int length() const {
 		const LfNode* cur = this;
 		int len = 0;
