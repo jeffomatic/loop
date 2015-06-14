@@ -11,6 +11,7 @@ struct SpscStream {
 
 	size_t capacity() const { return CAPACITY; }
 	size_t size() const { return writePos - readPos; }
+	size_t headroom() const { return CAPACITY - size(); }
 
 	size_t read(T* dst, size_t dstCap, size_t amount) {
 		const size_t toRead = min(dstCap, min(size(), amount));
@@ -31,7 +32,7 @@ struct SpscStream {
 	size_t readAll(T* dst, size_t dstCap) { return read(dst, dstCap, size()); }
 
 	size_t write(const T* src, size_t amount) {
-		const size_t toWrite = min(CAPACITY - size(), amount);
+		const size_t toWrite = min(headroom(), amount);
 		const size_t i = writeIndex();
 		const size_t toEnd = CAPACITY - i;
 

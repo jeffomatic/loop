@@ -6,7 +6,8 @@
 #include "../vendor/portaudio/include/portaudio.h"
 #include "../vendor/sdl/include/SDL.h"
 
-#include "util/lf_stack.h"
+#include "util/basicmath.h"
+#include "util/spsc_stream.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -17,10 +18,17 @@ void dieOnPaErr(PaError err, const char* context) {
 	exit(1);
 }
 
-struct paTestData {
-	float left_phase;
-	float right_phase;
+void dieOnSDLError(const char* context) {
+	printf("%s SDL error: %s", context, SDL_GetError());
+	exit(1);
+}
+
+struct stereoFrame {
+	float left;
+	float right;
 };
+
+typedef SpscStream<stereoFrame, 10> stereoStream;
 
 bool gQuit = false;
 void signalHandler(int signum) {
@@ -40,6 +48,32 @@ void initSignalHandler() {
 	}
 }
 
+int mixerThreadFunc(void* data) {
+	stereoStream* mixerOutStream = (stereoStream*)data;
+	stereoFrame writeState = {0, 0};
+	enum {samplesPerWrite = 32};
+
+	while (!gQuit) {
+		size_t headroom = mixerOutStream->headroom();
+		stereoFrame streamMsg[samplesPerWrite];
+		size_t msgSize = min(headroom, (size_t)samplesPerWrite);
+
+		for (int i = 0; i < msgSize; i++) {
+			writeState.left += 0.01f;
+			if (writeState.left >= 1.0f) writeState.left -= 2.0f;
+
+			writeState.right += 0.03f;
+			if (writeState.right >= 1.0f) writeState.right -= 2.0f;
+
+			streamMsg[i] = writeState;
+		}
+
+		mixerOutStream->write(streamMsg, msgSize);
+	}
+
+	return 0;
+}
+
 int patestCallback(
 	const void *inputBuffer,
 	void *outputBuffer,
@@ -49,34 +83,13 @@ int patestCallback(
 	void *userData
 ) {
 	UNUSED(inputBuffer);
-
-    /* Cast data passed through stream to our structure. */
-    paTestData *data = (paTestData*)userData;
-    float *out = (float*)outputBuffer;
-
-    for (int i = 0; i < framesPerBuffer; i++) {
-        *out++ = data->left_phase;
-        *out++ = data->right_phase;
-
-        /* Generate simple sawtooth phaser that ranges between -1.0 and 1.0. */
-        data->left_phase += 0.01f;
-        /* When signal reaches top, drop back down. */
-        if( data->left_phase >= 1.0f ) data->left_phase -= 2.0f;
-
-        /* higher pitch so we can distinguish left and right. */
-        data->right_phase += 0.03f;
-        if( data->right_phase >= 1.0f ) data->right_phase -= 2.0f;
-    }
-
+    stereoStream* mixerOutStream = (stereoStream*)userData;
+    stereoFrame* out = (stereoFrame*)outputBuffer;
+    mixerOutStream->readAll(out, framesPerBuffer);
     return 0;
 }
 
-int appMain(int argc, char* args[]) {
-	initSignalHandler();
-
-	PaError paErr = Pa_Initialize();
-	dieOnPaErr(paErr, "Pa_Initialize");
-
+void paDumpInfo() {
 	const int nDevices = Pa_GetDeviceCount();
 	if (nDevices < 0) dieOnPaErr((PaError)nDevices, "Pa_GetDeviceCount");
 
@@ -97,22 +110,30 @@ int appMain(int argc, char* args[]) {
 	    printf("- high output:\t%f\n", deviceInfo->defaultHighOutputLatency);
 	    printf("Default sample rate: %f\n", deviceInfo->defaultSampleRate);
 	}
+}
 
-	paTestData data;
-	PaStream* stream;
+int appMain(int argc, char* args[]) {
+	initSignalHandler();
 
+	PaError paErr = Pa_Initialize();
+	dieOnPaErr(paErr, "Pa_Initialize");
+
+	stereoStream mixerOutStream;
+	PaStream* paStream;
     paErr = Pa_OpenDefaultStream(
-    	&stream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
-        patestCallback, &data
+    	&paStream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
+        patestCallback, &mixerOutStream
 	);
     dieOnPaErr(paErr, "Pa_OpenDefaultStream");
 
-    paErr = Pa_StartStream(stream);
+    paErr = Pa_StartStream(paStream);
     dieOnPaErr(paErr, "Pa_StartStream");
 
-    for (;;) {
-    	if (gQuit) break;
-    }
+    SDL_Thread* mixerThread = SDL_CreateThread(mixerThreadFunc, "mixer", &mixerOutStream);
+	if (mixerThread == nullptr) {
+		dieOnSDLError("SDL_CreateThread(mixerThreadFunc, \"mixer\", &mixerOutStream)");
+	}
+    SDL_WaitThread(mixerThread, nullptr);
 
 	paErr = Pa_Terminate();
 	dieOnPaErr(paErr, "Pa_Terminate");
