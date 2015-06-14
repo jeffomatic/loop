@@ -1,4 +1,5 @@
 build
+testbuild
 
 # Ignore any configure/build artifacts from vendored deps
-src/vendor
+vendor/

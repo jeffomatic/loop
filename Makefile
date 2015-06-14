@@ -1,53 +1,35 @@
-CC = llvm-g++
+CC = clang++
+LINK = clang++
+CFLAGS = -Wall -std=c++11 -stdlib=libc++ -g
+CPPFLAGS =
+SOURCE_DIR = src
+BUILD_DIR = build
+SOURCES = $(shell find $(SOURCE_DIR) -type f -name *.cpp)
+OBJS = $(patsubst $(SOURCE_DIR)/%,$(BUILD_DIR)/%,$(SOURCES:.cpp=.o))
+EXEC_NAME = loop
+EXEC = $(BUILD_DIR)/$(EXEC_NAME)
 
-SOURCEDIR = src
-BUILDDIR = build
-VENDORDIR = vendor
+all: $(EXEC)
 
-SDL_DIR = $(VENDORDIR)/sdl
-SDL_LIB = $(SDL_DIR)/build/.libs/libSDL2.a
-SDL_FRAMEWORKS = ForceFeedback IOKit AppKit
-SDL_LIB_DEPS = iconv
+run: all
+	@$(EXEC)
 
-PA_DIR = $(VENDORDIR)/portaudio
-PA_LIB = $(PA_DIR)/lib/.libs/libportaudio.a
-PA_FRAMEWORKS = CoreAudio AudioToolbox AudioUnit CoreServices Carbon
+-include $(OBJS:.o=.dep)
 
-LIB_DEPS = $(sort $(SDL_LIB_DEPS))
-FRAMEWORKS = $(sort $(PA_FRAMEWORKS) $(SDL_FRAMEWORKS))
+$(EXEC) : $(OBJS) $(VENDOR_OBJS)
+	$(CC) $(OBJS) $(VENDOR_OBJS) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
 
-LIB_DEP_FLAGS = $(patsubst %,-l%,$(LIB_DEPS))
-FRAMEWORK_FLAGS = $(patsubst %,-framework %,$(FRAMEWORKS))
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -MM $(SOURCE_DIR)/$*.cpp > $(BUILD_DIR)/$*.dep
+	@cp -f $(BUILD_DIR)/$*.dep $(BUILD_DIR)/$*.dep.tmp
+	@sed -e 's|.*:|$(BUILD_DIR)/$*.o:|' < $(BUILD_DIR)/$*.dep.tmp > $(BUILD_DIR)/$*.dep
+	@rm -f $(BUILD_DIR)/$*.dep.tmp
 
-SOURCES = $(wildcard $(SOURCEDIR)/*.cpp)
-OBJECTS = $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
-VENDORDEPS = $(PA_LIB) $(SDL_LIB)
-
-EXECUTABLE = loop
-
-all: $(BUILDDIR)/$(EXECUTABLE)
-
-$(BUILDDIR)/$(EXECUTABLE) : $(OBJECTS) $(VENDORDEPS)
-	$(CC) $(OBJECTS) $(PA_LIB) $(SDL_LIB) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
-
-$(OBJECTS): $(SOURCES)
-	$(CC) -Wall -g -c $< -o $@
-
-$(PA_LIB):
-	cd $(PA_DIR); ./configure && make
-
-$(SDL_LIB):
-	cd $(SDL_DIR); ./configure && make
-
-clean-all: clean vendorclean
+clean-all: clean test-clean vendor-clean
 
 clean:
-	rm -rf $(BUILDDIR)/*
+	rm -rf $(BUILD_DIR)
 
-vendorclean: pa-clean sdl-clean
-
-pa-clean:
-	cd $(PA_DIR); make clean
-
-sdl-clean:
-	cd $(SDL_DIR); make clean
+include vendor.make test.make
