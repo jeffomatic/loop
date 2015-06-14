@@ -1,5 +1,10 @@
+extern int appMain(int argc, char* args[]);
+extern int testMain(int argc, char* args[]);
+
+int main(int argc, char* args[]) {
 #ifdef TEST
-#include "test_main.h"
+	return testMain(argc, args);
 #else
-#include "app_main.h"
+	return appMain(argc, args);
 #endif
+}

@@ -71,7 +71,7 @@ int patestCallback(
     return 0;
 }
 
-int main(int argc, char* args[]) {
+int appMain(int argc, char* args[]) {
 	initSignalHandler();
 
 	PaError paErr = Pa_Initialize();
