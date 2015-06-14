@@ -85,7 +85,7 @@ int patestCallback(
 	UNUSED(inputBuffer);
     stereoStream* mixerOutStream = (stereoStream*)userData;
     stereoFrame* out = (stereoFrame*)outputBuffer;
-    mixerOutStream->readAll(out, framesPerBuffer);
+    mixerOutStream->read(out, framesPerBuffer);
     return 0;
 }
 

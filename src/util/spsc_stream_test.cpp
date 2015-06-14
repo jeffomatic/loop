@@ -12,7 +12,7 @@ void testSpscStream() {
 	// Reading out of an empty stream
 	assert(s.capacity() == 16);
 	assert(s.size() == 0);
-	n = s.read(dst, arraySize(dst), arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 0);
 
 	// Writing and reading a single element.
@@ -21,7 +21,7 @@ void testSpscStream() {
 	assert(n == 1);
 	assert(s.size() == 1);
 
-	n = s.read(dst, arraySize(dst), arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 1);
 	assert(s.size() == 0);
 	for (int i = 0; i < 1; i++) assert(a[i] == dst[i]);
@@ -32,7 +32,7 @@ void testSpscStream() {
 	assert(n == 15);
 	assert(s.size() == 15);
 
-	n = s.read(dst, arraySize(dst), arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 15);
 	assert(s.size() == 0);
 	for (int i = 0; i < 15; i++) assert(b[i] == dst[i]);
@@ -43,7 +43,7 @@ void testSpscStream() {
 	assert(n == 8);
 	assert(s.size() == 8);
 
-	n = s.read(dst, arraySize(dst), arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 8);
 	assert(s.size() == 0);
 	for (int i = 0; i < 8; i++) assert(c[i] == dst[i]);
@@ -57,7 +57,7 @@ void testSpscStream() {
 	assert(n == 16);
 	assert(s.size() == 16);
 
-	n = s.read(dst, arraySize(dst), arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 16);
 	assert(s.size() == 0);
 	for (int i = 0; i < 16; i++) assert(d[i] == dst[i]);
@@ -71,28 +71,28 @@ void testSpscStream() {
 	assert(n == 16);
 	assert(s.size() == 16);
 
-	n = s.readAll(dst, 1);
+	n = s.read(dst, 1);
 	assert(n == 1);
 	assert(s.size() == 15);
 	for (int i = 0; i < n; i++) assert(dst[i] == e[i]);
 
-	n = s.readAll(dst, 2);
+	n = s.read(dst, 2);
 	assert(n == 2);
 	assert(s.size() == 13);
 	for (int i = 0; i < n; i++) assert(dst[i] == e[i + 1]);
 
-	n = s.readAll(dst, 3);
+	n = s.read(dst, 3);
 	assert(n == 3);
 	assert(s.size() == 10);
 	for (int i = 0; i < n; i++) assert(dst[i] == e[i + 3]);
 
-	n = s.readAll(dst, 4);
+	n = s.read(dst, 4);
 	assert(n == 4);
 	assert(s.size() == 6);
 	for (int i = 0; i < n; i++) assert(dst[i] == e[i + 6]);
 
 	// Now read everything possible.
-	n = s.readAll(dst, arraySize(dst));
+	n = s.read(dst, arraySize(dst));
 	assert(n == 6);
 	assert(s.size() == 0);
 	for (int i = 0; i < n; i++) assert(dst[i] == e[i + 10]);
