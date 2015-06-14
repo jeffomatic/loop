@@ -24,6 +24,7 @@ $(TEST_BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 	@$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -MM $(SOURCE_DIR)/$*.cpp > $(TEST_BUILD_DIR)/$*.dep
 	@cp -f $(TEST_BUILD_DIR)/$*.dep $(TEST_BUILD_DIR)/$*.dep.tmp
 	@sed -e 's|.*:|$(TEST_BUILD_DIR)/$*.o:|' < $(TEST_BUILD_DIR)/$*.dep.tmp > $(TEST_BUILD_DIR)/$*.dep
+	@sed -e 's/.*://' -e 's/\\$$//' < $(TEST_BUILD_DIR)/$*.dep.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TEST_BUILD_DIR)/$*.dep
 	@rm -f $(TEST_BUILD_DIR)/$*.dep.tmp
 
 test-clean:

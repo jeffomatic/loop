@@ -25,6 +25,7 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 	@$(CC) $(CFLAGS) $(CPPFLAGS) -MM $(SOURCE_DIR)/$*.cpp > $(BUILD_DIR)/$*.dep
 	@cp -f $(BUILD_DIR)/$*.dep $(BUILD_DIR)/$*.dep.tmp
 	@sed -e 's|.*:|$(BUILD_DIR)/$*.o:|' < $(BUILD_DIR)/$*.dep.tmp > $(BUILD_DIR)/$*.dep
+	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILD_DIR)/$*.dep.tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILD_DIR)/$*.dep
 	@rm -f $(BUILD_DIR)/$*.dep.tmp
 
 clean-all: clean test-clean vendor-clean
