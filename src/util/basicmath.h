@@ -20,6 +20,11 @@ inline bool wrapLess(uint64_t a, uint64_t b) {
 }
 
 template<typename T>
+bool powerOfTwo(T n) {
+	return n != 0 && (n&(n-1)) == 0;
+}
+
+template<typename T>
 const T& min(const T& a, const T& b) {
  	return (b < a) ? b : a;
 }

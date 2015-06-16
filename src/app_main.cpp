@@ -28,7 +28,7 @@ struct stereoFrame {
 	float right;
 };
 
-typedef SpscStream<stereoFrame, 10> stereoStream;
+typedef SpscStream<stereoFrame> stereoStream;
 
 bool gQuit = false;
 void signalHandler(int signum) {
@@ -118,7 +118,9 @@ int appMain(int argc, char* args[]) {
 	PaError paErr = Pa_Initialize();
 	dieOnPaErr(paErr, "Pa_Initialize");
 
-	stereoStream mixerOutStream;
+	stereoFrame buf[1024];
+	stereoStream mixerOutStream(buf);
+
 	PaStream* paStream;
 	paErr = Pa_OpenDefaultStream(
 		&paStream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,

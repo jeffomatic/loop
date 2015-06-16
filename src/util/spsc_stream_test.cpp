@@ -5,12 +5,12 @@
 #include "spsc_stream.h"
 
 void testSpscStream() {
-	SpscStream<double, 4> s;
+	double buf[16];
+	SpscStream<double> s(buf);
 	size_t n;
 	double dst[16];
 
 	// Reading out of an empty stream
-	assert(s.capacity() == 16);
 	assert(s.size() == 0);
 	n = s.read(dst, arraySize(dst));
 	assert(n == 0);
