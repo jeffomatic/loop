@@ -1,6 +1,6 @@
 CC = clang++
 LINK = clang++
-CFLAGS = -Wall -std=c++11 -stdlib=libc++ -g
+CFLAGS = -Wall -std=c++11 -stdlib=libc++ -g -fno-exceptions
 CPPFLAGS =
 SOURCE_DIR = src
 BUILD_DIR = build
