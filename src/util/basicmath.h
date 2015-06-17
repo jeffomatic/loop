@@ -38,3 +38,9 @@ template<typename T, size_t N>
 constexpr size_t arraySize(const T (&)[N]) {
 	return N;
 }
+
+inline void scaleIntSamples(const int16_t* src, float* dst, size_t amount) {
+	for (size_t i = 0; i < amount; i++) {
+		dst[i] = (float)src[i] / (float)(INT16_MAX + 1);
+	}
+}

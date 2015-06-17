@@ -9,7 +9,13 @@
 #include "util/basicmath.h"
 #include "util/spsc_stream.h"
 
+#include "sampler.h"
+
 #define UNUSED(x) (void)(x)
+
+enum {
+	gSampleRate = 44100
+};
 
 void dieOnPaErr(PaError err, const char* context) {
 	if (err == paNoError) return;
@@ -48,31 +54,27 @@ void initSignalHandler() {
 	}
 }
 
-int mixerThreadFunc(void* data) {
-	stereoStream* mixerOutStream = (stereoStream*)data;
-	stereoFrame writeState = {0, 0};
-	enum {samplesPerWrite = 32};
+struct Mixer {
+	SpscStream<stereoFrame>* m_out = nullptr;
+	Sampler<stereoFrame>* m_sampler = nullptr;
 
-	while (!gQuit) {
-		size_t headroom = mixerOutStream->headroom();
-		stereoFrame streamMsg[samplesPerWrite];
-		size_t msgSize = min(headroom, (size_t)samplesPerWrite);
+	void run() {
+		enum {samplesPerWrite = 128};
 
-		for (int i = 0; i < msgSize; i++) {
-			writeState.left += 0.01f;
-			if (writeState.left >= 1.0f) writeState.left -= 2.0f;
-
-			writeState.right += 0.03f;
-			if (writeState.right >= 1.0f) writeState.right -= 2.0f;
-
-			streamMsg[i] = writeState;
+		while (!gQuit) {
+			stereoFrame streamMsg[samplesPerWrite];
+			size_t msgSize = min(m_out->headroom(), (size_t)samplesPerWrite);
+			msgSize = m_sampler->sample(streamMsg, msgSize);
+			m_out->write(streamMsg, msgSize);
 		}
-
-		mixerOutStream->write(streamMsg, msgSize);
 	}
 
-	return 0;
-}
+	static int threadFunc(void* data) {
+		Mixer* m = (Mixer*)data;
+		m->run();
+		return 0;
+	}
+};
 
 int patestCallback(
 	const void *inputBuffer,
@@ -82,10 +84,15 @@ int patestCallback(
 	PaStreamCallbackFlags statusFlags,
 	void *userData
 ) {
-	UNUSED(inputBuffer);
-	stereoStream* mixerOutStream = (stereoStream*)userData;
-	stereoFrame* out = (stereoFrame*)outputBuffer;
-	mixerOutStream->read(out, framesPerBuffer);
+	auto mixerOutStream = (stereoStream*)userData;
+	auto out = (stereoFrame*)outputBuffer;
+	auto nRead = mixerOutStream->read(out, framesPerBuffer);
+
+	// zerofill in case the stream drops out
+	if (framesPerBuffer > nRead) {
+		memset(out, 0, (framesPerBuffer-nRead)*sizeof(stereoFrame));
+	}
+
 	return 0;
 }
 
@@ -112,28 +119,71 @@ void paDumpInfo() {
 	}
 }
 
+union SDLAudioFormat {
+	SDL_AudioFormat saf;
+	struct {
+		uint8_t bits;
+		uint8_t isFloat:1;
+		uint8_t pad1:3;
+		uint8_t isBigEndian:1;
+		uint8_t pad2:2;
+		uint8_t isSigned:1;
+	} fields;
+};
+
+void SDLWavDumpInfo(const SDL_AudioSpec* spec) {
+	printf("amenbreak.wav:\n");
+	printf("- channels: %d\n", spec->channels);
+	printf("- freq: %d\n", spec->freq);
+	printf("- format: %d\n", spec->format);
+
+	SDLAudioFormat formatFields = {.saf = spec->format};
+	printf("  - bits: %d\n", formatFields.fields.bits);
+	printf("  - isFloat: %d\n", formatFields.fields.isFloat);
+	printf("  - isBigEndian: %d\n", formatFields.fields.isBigEndian);
+	printf("  - isSigned: %d\n", formatFields.fields.isSigned);
+}
+
 int appMain(int argc, char* args[]) {
 	initSignalHandler();
+
+	SDL_AudioSpec wavSpec;
+	Uint32 wavLength;
+	Uint8* wavBuf;
+	SDL_AudioSpec* retSpec = SDL_LoadWAV("assets/amenbreak.wav", &wavSpec, &wavBuf, &wavLength);
+	if (retSpec == NULL) {
+		dieOnSDLError("SDL_LoadWAV(\"assets/amenbreak.wav\", &wavSpec, &wavBuf, &wavLength)");
+	}
+	SDLWavDumpInfo(retSpec);
+
+	size_t nSamples = wavLength / (2*sizeof(int16_t));
+	auto sampleBuf = new stereoFrame[nSamples];
+	scaleIntSamples((int16_t*)wavBuf, (float*)sampleBuf, 2*nSamples);
+	Sampler<stereoFrame> sampler(sampleBuf, nSamples);
+	sampler.setLoop(true);
+
+	stereoFrame buf[1024];
+	stereoStream outstream(buf);
+	Mixer mixer;
+	mixer.m_out = &outstream;
+	mixer.m_sampler = &sampler;
 
 	PaError paErr = Pa_Initialize();
 	dieOnPaErr(paErr, "Pa_Initialize");
 
-	stereoFrame buf[1024];
-	stereoStream mixerOutStream(buf);
-
 	PaStream* paStream;
 	paErr = Pa_OpenDefaultStream(
-		&paStream, 0, 2, paFloat32, 44100, paFramesPerBufferUnspecified,
-		patestCallback, &mixerOutStream
+		&paStream, 0, 2, paFloat32, gSampleRate, paFramesPerBufferUnspecified,
+		patestCallback, &outstream
 	);
 	dieOnPaErr(paErr, "Pa_OpenDefaultStream");
 
 	paErr = Pa_StartStream(paStream);
 	dieOnPaErr(paErr, "Pa_StartStream");
 
-	SDL_Thread* mixerThread = SDL_CreateThread(mixerThreadFunc, "mixer", &mixerOutStream);
+	SDL_Thread* mixerThread = SDL_CreateThread(Mixer::threadFunc, "mixer", &mixer);
 	if (mixerThread == nullptr) {
-		dieOnSDLError("SDL_CreateThread(mixerThreadFunc, \"mixer\", &mixerOutStream)");
+		dieOnSDLError("SDL_CreateThread(Mixer::threadFunc, \"mixer\", &mixer);");
 	}
 	SDL_WaitThread(mixerThread, nullptr);
 
