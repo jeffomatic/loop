@@ -6,16 +6,8 @@
 #include "../vendor/portaudio/include/portaudio.h"
 #include "../vendor/sdl/include/SDL.h"
 
-#include "util/basicmath.h"
-#include "util/spsc_stream.h"
-
+#include "mixer.h"
 #include "sampler.h"
-
-#define UNUSED(x) (void)(x)
-
-enum {
-	gSampleRate = 44100
-};
 
 void dieOnPaErr(PaError err, const char* context) {
 	if (err == paNoError) return;
@@ -28,13 +20,6 @@ void dieOnSDLError(const char* context) {
 	printf("%s SDL error: %s", context, SDL_GetError());
 	exit(1);
 }
-
-struct stereoFrame {
-	float left;
-	float right;
-};
-
-typedef SpscStream<stereoFrame> stereoStream;
 
 bool gQuit = false;
 void signalHandler(int signum) {
@@ -49,32 +34,10 @@ void signalHandler(int signum) {
 
 void initSignalHandler() {
 	// Signals range from [1, 31]
-	for (int i = 1; i <= 31; i++) {
+	for (int i = 1; i <= 31; ++i) {
 		signal(i, signalHandler);
 	}
 }
-
-struct Mixer {
-	SpscStream<stereoFrame>* m_out = nullptr;
-	Sampler<stereoFrame>* m_sampler = nullptr;
-
-	void run() {
-		enum {samplesPerWrite = 128};
-
-		while (!gQuit) {
-			stereoFrame streamMsg[samplesPerWrite];
-			size_t msgSize = min(m_out->headroom(), (size_t)samplesPerWrite);
-			msgSize = m_sampler->sample(streamMsg, msgSize);
-			m_out->write(streamMsg, msgSize);
-		}
-	}
-
-	static int threadFunc(void* data) {
-		Mixer* m = (Mixer*)data;
-		m->run();
-		return 0;
-	}
-};
 
 int patestCallback(
 	const void *inputBuffer,
@@ -84,7 +47,7 @@ int patestCallback(
 	PaStreamCallbackFlags statusFlags,
 	void *userData
 ) {
-	auto mixerOutStream = (stereoStream*)userData;
+	auto mixerOutStream = (StereoStream*)userData;
 	auto out = (stereoFrame*)outputBuffer;
 	auto nRead = mixerOutStream->read(out, framesPerBuffer);
 
@@ -102,7 +65,7 @@ void paDumpInfo() {
 
 	printf("Audio devices: %d\n", nDevices);
 
-	for (int i = 0; i < nDevices; i++) {
+	for (int i = 0; i < nDevices; ++i) {
 		const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
 
 		printf("\n");
@@ -132,7 +95,6 @@ union SDLAudioFormat {
 };
 
 void SDLWavDumpInfo(const SDL_AudioSpec* spec) {
-	printf("amenbreak.wav:\n");
 	printf("- channels: %d\n", spec->channels);
 	printf("- freq: %d\n", spec->freq);
 	printf("- format: %d\n", spec->format);
@@ -144,29 +106,43 @@ void SDLWavDumpInfo(const SDL_AudioSpec* spec) {
 	printf("  - isSigned: %d\n", formatFields.fields.isSigned);
 }
 
-int appMain(int argc, char* args[]) {
-	initSignalHandler();
-
+StereoSampler* makeSampler(const char* file) {
 	SDL_AudioSpec wavSpec;
 	Uint32 wavLength;
 	Uint8* wavBuf;
-	SDL_AudioSpec* retSpec = SDL_LoadWAV("assets/amenbreak.wav", &wavSpec, &wavBuf, &wavLength);
+	SDL_AudioSpec* retSpec = SDL_LoadWAV(file, &wavSpec, &wavBuf, &wavLength);
 	if (retSpec == NULL) {
-		dieOnSDLError("SDL_LoadWAV(\"assets/amenbreak.wav\", &wavSpec, &wavBuf, &wavLength)");
+		dieOnSDLError("makeSampler() | SDL_LoadWAV()");
 	}
+
+	printf("%s\n", file);
 	SDLWavDumpInfo(retSpec);
 
 	size_t nSamples = wavLength / (2*sizeof(int16_t));
 	auto sampleBuf = new stereoFrame[nSamples];
 	scaleIntSamples((int16_t*)wavBuf, (float*)sampleBuf, 2*nSamples);
-	Sampler<stereoFrame> sampler(sampleBuf, nSamples);
-	sampler.setLoop(true);
+	return new StereoSampler(sampleBuf, nSamples);
+}
+
+int appMain(int argc, char* args[]) {
+	initSignalHandler();
 
 	stereoFrame buf[1024];
-	stereoStream outstream(buf);
+	StereoStream outstream(buf);
 	Mixer mixer;
 	mixer.m_out = &outstream;
-	mixer.m_sampler = &sampler;
+
+	const char* sampleFiles[] = {
+		"assets/120-blues.wav",
+		"assets/120-claps.wav",
+		//"assets/120-synth-bass.wav",
+	};
+
+	for (int i = 0; i < arraySize(sampleFiles); ++i) {
+		auto s = makeSampler(sampleFiles[i]);
+		s->setLoop(true);
+		mixer.m_loopSamplers.push_back(s);
+	}
 
 	PaError paErr = Pa_Initialize();
 	dieOnPaErr(paErr, "Pa_Initialize");

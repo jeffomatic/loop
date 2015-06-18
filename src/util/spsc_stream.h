@@ -13,35 +13,42 @@ struct SpscStream {
 	size_t headroom() const { return m_capacity - size(); }
 
 	size_t read(T* dst, size_t amount) {
-		const size_t numRead = min(amount, size());
+		const size_t nRead = min(amount, size());
 		const size_t i = readIndex();
 		const size_t toEnd = m_capacity - i;
 
-		if (numRead > toEnd) {
+		if (nRead > toEnd) {
 			memcpy(dst, &m_data[i], sizeof(T) * toEnd);
-			memcpy(dst + toEnd, &m_data[0], sizeof(T) * (numRead - toEnd));
+			memcpy(dst + toEnd, &m_data[0], sizeof(T) * (nRead - toEnd));
 		} else {
-			memcpy(dst, &m_data[i], sizeof(T) * numRead);
+			memcpy(dst, &m_data[i], sizeof(T) * nRead);
 		}
 
-		m_readPos += numRead;
-		return numRead;
+		m_readPos += nRead;
+		return nRead;
+	}
+
+	// Consume the stream as if being read, but has no external side effects.
+	size_t discard(size_t amount) {
+		const size_t nDiscarded = min(amount, size());
+		m_readPos += nDiscarded;
+		return nDiscarded;
 	}
 
 	size_t write(const T* src, size_t amount) {
-		const size_t numWritten = min(headroom(), amount);
+		const size_t nWritten = min(amount, headroom());
 		const size_t i = writeIndex();
 		const size_t toEnd = m_capacity - i;
 
-		if (numWritten > toEnd) {
+		if (nWritten > toEnd) {
 			memcpy(&m_data[i], src, sizeof(T) * toEnd);
-			memcpy(&m_data[0], src + toEnd, sizeof(T) * (numWritten - toEnd));
+			memcpy(&m_data[0], src + toEnd, sizeof(T) * (nWritten - toEnd));
 		} else {
-			memcpy(&m_data[i], src, sizeof(T) * numWritten);
+			memcpy(&m_data[i], src, sizeof(T) * nWritten);
 		}
 
-		m_writePos += numWritten;
-		return numWritten;
+		m_writePos += nWritten;
+		return nWritten;
 	}
 
 	SpscStream(T* data, size_t cap)

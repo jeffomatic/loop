@@ -40,7 +40,7 @@ constexpr size_t arraySize(const T (&)[N]) {
 }
 
 inline void scaleIntSamples(const int16_t* src, float* dst, size_t amount) {
-	for (size_t i = 0; i < amount; i++) {
+	for (size_t i = 0; i < amount; ++i) {
 		dst[i] = (float)src[i] / (float)(INT16_MAX + 1);
 	}
 }
