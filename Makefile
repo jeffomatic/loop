@@ -1,6 +1,7 @@
 CC = clang++
 LINK = clang++
-CFLAGS = -Wall -std=c++11 -stdlib=libc++ -g -fno-exceptions
+CFLAGS = -Wall -std=c++11 -stdlib=libc++ -g -fno-exceptions -O3
+LDFLAGS = -O4
 CPPFLAGS =
 SOURCE_DIR = src
 BUILD_DIR = build
@@ -17,7 +18,7 @@ run: all
 -include $(OBJS:.o=.dep)
 
 $(EXEC) : $(OBJS) $(VENDOR_OBJS)
-	$(CC) $(OBJS) $(VENDOR_OBJS) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
+	$(LINK) $(LDFLAGS) $(OBJS) $(VENDOR_OBJS) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 	@mkdir -p $(dir $@)

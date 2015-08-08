@@ -16,7 +16,7 @@ test-run: test
 -include $(TEST_OBJS:.o=.dep)
 
 $(TEST_EXEC): $(TEST_OBJS) $(VENDOR_OBJS)
-	$(LINK) $(TEST_OBJS) $(VENDOR_OBJS) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
+	$(LINK) $(LDFLAGS) $(TEST_OBJS) $(VENDOR_OBJS) $(LIB_DEP_FLAGS) $(FRAMEWORK_FLAGS) -o $@
 
 $(TEST_BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 	@mkdir -p $(dir $@)
