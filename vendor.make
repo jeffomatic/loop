@@ -2,7 +2,7 @@ VENDOR_DIR = vendor
 
 SDL_DIR = $(VENDOR_DIR)/sdl
 SDL_LIB = $(SDL_DIR)/build/.libs/libSDL2.a
-SDL_FRAMEWORKS = ForceFeedback IOKit AppKit
+SDL_FRAMEWORKS = ForceFeedback IOKit AppKit OpenGL
 SDL_DEPLIBS = iconv
 
 PA_DIR = $(VENDOR_DIR)/portaudio

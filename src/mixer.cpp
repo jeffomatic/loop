@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "mixer.h"
 
 extern bool gQuit;
@@ -24,10 +26,11 @@ void Mixer::run() {
 
 		m_out->write(streamMsg, maxSampled);
 	}
+
+	//printf("Mixer::run() complete");
 }
 
 int Mixer::threadFunc(void *data) {
-	Mixer* m = (Mixer*)data;
-	m->run();
+	static_cast<Mixer*>(data)->run();
 	return 0;
 }

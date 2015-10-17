@@ -6,6 +6,7 @@
 #include "../vendor/portaudio/include/portaudio.h"
 #include "../vendor/sdl/include/SDL.h"
 
+#include "gui.h"
 #include "mixer.h"
 #include "sampler.h"
 
@@ -16,7 +17,7 @@ void dieOnPaErr(PaError err, const char* context) {
 	exit(1);
 }
 
-void dieOnSDLError(const char* context) {
+void dieSDLError(const char* context) {
 	printf("%s SDL error: %s", context, SDL_GetError());
 	exit(1);
 }
@@ -112,7 +113,7 @@ StereoSampler* makeSampler(const char* file) {
 	Uint8* wavBuf;
 	SDL_AudioSpec* retSpec = SDL_LoadWAV(file, &wavSpec, &wavBuf, &wavLength);
 	if (retSpec == NULL) {
-		dieOnSDLError("makeSampler() | SDL_LoadWAV()");
+		dieSDLError("makeSampler() | SDL_LoadWAV()");
 	}
 
 	printf("%s\n", file);
@@ -126,6 +127,16 @@ StereoSampler* makeSampler(const char* file) {
 
 int appMain(int argc, char* args[]) {
 	initSignalHandler();
+
+	// Gui init
+
+	SDL_SetMainReady();
+
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
+		dieSDLError("SDL_Init()");
+	}
+
+	// Audio init
 
 	stereoFrame buf[1024];
 	StereoStream outstream(buf);
@@ -157,14 +168,31 @@ int appMain(int argc, char* args[]) {
 	paErr = Pa_StartStream(paStream);
 	dieOnPaErr(paErr, "Pa_StartStream");
 
+	// Threads
+
 	SDL_Thread* mixerThread = SDL_CreateThread(Mixer::threadFunc, "mixer", &mixer);
 	if (mixerThread == nullptr) {
-		dieOnSDLError("SDL_CreateThread(Mixer::threadFunc, \"mixer\", &mixer);");
+		dieSDLError("SDL_CreateThread - mixer");
 	}
+/*
+	Gui gui;
+	SDL_Thread* guiThread = SDL_CreateThread(Gui::threadFunc, "gui", &gui);
+	if (guiThread == nullptr) {
+		dieSDLError("SDL_CreateThread() - gui");
+	}
+*/
+	Gui gui;
+	gui.run();
+
 	SDL_WaitThread(mixerThread, nullptr);
+//	SDL_WaitThread(guiThread, nullptr);
+
+	// Shutdown
 
 	paErr = Pa_Terminate();
 	dieOnPaErr(paErr, "Pa_Terminate");
+
+	SDL_Quit();
 
 	return 0;
 }

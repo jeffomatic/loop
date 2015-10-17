@@ -1,5 +1,7 @@
 build
 testbuild
 
+imgui.ini
+
 # Ignore any configure/build artifacts from vendored deps
 vendor/
